@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interaktives Diagramm</title>
+    <script src="https://cdn.plot.ly/plotly-2.18.2.min.js"></script>
+</head>
+<body>
+<h1>Gehaltsverteilung</h1>
+<div>
+    <form id="upload-form">
+        <input type="file" id="csv-file" />
+        <button type="button" onclick="uploadFile()">Hochladen</button>
+    </form>
+    <div id="chart" style="width: 100%; max-width: 800px; height: 600px; margin-top: 20px;"></div>
+</div>
+<script>
+    async function uploadFile() {
+        const fileInput = document.getElementById('csv-file');
+        const file = fileInput.files[0];
+
+        if (!file) {
+            alert("Bitte eine Datei auswählen.");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append("file", file);
+
+        try {
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                alert("Datei erfolgreich hochgeladen!");
+                console.log("Starte Abruf der Histogrammdaten...");
+                await fetchHistogram(); // Starte sofort die Diagrammanzeige
+            } else {
+                const errorText = await response.text();
+                alert("Fehler beim Hochladen der Datei: " + errorText);
+            }
+        } catch (err) {
+            alert("Netzwerkfehler: " + err.message);
+        }
+    }
+
+    async function fetchHistogram() {
+        try {
+            console.log("Rufe Histogrammdaten vom Server ab...");
+            const response = await fetch('/histogram');
+            if (!response.ok) {
+                throw new Error('Fehler beim Abrufen der Histogrammdaten. Status: ' + response.status);
+            }
+            const data = await response.json();
+
+            console.log("Empfangene Histogrammdaten:", data);
+
+            const trace = {
+                x: data.bins,
+                y: data.counts,
+                type: 'bar',
+                marker: { color: 'blue' }
+            };
+
+            const layout = {
+                title: 'Gehaltsverteilung',
+                xaxis: { title: 'Gehaltsklassen (EUR)' },
+                yaxis: { title: 'Häufigkeit' },
+                bargap: 0.2,
+            };
+
+            Plotly.newPlot('chart', [trace], layout);
+        } catch (err) {
+            console.error("Fehler beim Abrufen der Histogrammdaten:", err.message);
+            alert("Fehler beim Abrufen der Histogrammdaten: " + err.message);
+        }
+    }
+
+
+</script>
+</body>
+</html>
